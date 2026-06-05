@@ -286,14 +286,18 @@ function drawS0() {
   const ROW_GAP = 22;
   const n = 3;
   const totalSrcH = n * BOX_H + (n - 1) * ROW_GAP;
-  const startY = (H - totalSrcH) / 2;
+
+  // Reserve bottom 110px for metric cards; center diagram in remaining space
+  const metAreaH = 110;
+  const diagramH = H - metAreaH;
+  const startY = (diagramH - totalSrcH) / 2;
 
   const cx0 = 16;
   const cx1 = cx0 + BOX_W + Math.max(60, W * 0.10);
   const cx2 = cx1 + BOX_W + Math.max(55, W * 0.09);
   const cx3 = cx2 + BOX_W + Math.max(55, W * 0.09);
 
-  const procY = (H - BOX_H) / 2;
+  const procY = (diagramH - BOX_H) / 2;
 
   const sources = [
     { name: 'Basketball-Ref', sub: 'Per Game + Advanced', tag: '01_scrape_bbref.py', color: C.era1 },
@@ -366,7 +370,7 @@ function drawS0() {
     { name: 'salary_vs_per',  desc: 'Δ percentiles' },
     { name: 'pts_per_dollar', desc: 'PTS / $M' },
   ];
-  const metY = H - 80;
+  const metY = diagramH + 20;
   const mW = (W - 40) / metrics.length;
 
   svg.append('text').attr('x', 20).attr('y', metY - 6)
