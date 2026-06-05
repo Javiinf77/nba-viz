@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>¿Se paga lo que se rinde? — 24 años de NBA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="top-nav">
+  <span class="nav-title">NBA Salary · 24 Seasons</span>
+  <div class="nav-dots">
+    <a class="dot active" href="#s1" data-label="Salarios"></a>
+    <a class="dot" href="#s2" data-label="Rendimiento"></a>
+    <a class="dot" href="#s3" data-label="Chollos"></a>
+    <a class="dot" href="#s4" data-label="Valor"></a>
+    <a class="dot" href="#s5" data-label="Posiciones"></a>
+    <a class="dot" href="#s6" data-label="Equipos"></a>
+    <a class="dot" href="#s7" data-label="Internacional"></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-inner">
+    <p class="hero-eyebrow">2000–01 → 2023–24 · 1.573 jugadores · 14.447 registros</p>
+    <h1 class="hero-title">¿Se paga lo que<br>se rinde?</h1>
+    <p class="hero-sub">24 años de evidencia en la NBA</p>
+    <div class="hero-stats">
+      <div class="hstat"><span class="hstat-val" id="h-seasons">0</span><span class="hstat-label">temporadas</span></div>
+      <div class="hstat"><span class="hstat-val" id="h-players">0</span><span class="hstat-label">jugadores únicos</span></div>
+      <div class="hstat"><span class="hstat-val" id="h-maxsal">$0M</span><span class="hstat-label">salario máximo</span></div>
+    </div>
+    <a class="hero-cta" href="#s1">Explorar ↓</a>
+  </div>
+</section>
+
+<!-- S1: SALARY CAP GROWTH -->
+<section class="viz-section" id="s1">
+  <div class="section-text">
+    <span class="section-tag">01 — Contexto</span>
+    <h2>El dinero que hay<br>en juego</h2>
+    <p>El <em>salary cap</em> de la NBA pasó de <strong>$35.5M en 2000</strong> a <strong>$136M en 2024</strong>: un incremento del 283%. El boom del 2016 (acuerdo TV) lo hizo saltar de $70M a $94M en un año.</p>
+    <p>Para comparar salarios entre eras, usamos <code>salary_pct_cap</code> — el porcentaje del cap que representa cada contrato.</p>
+    <div class="legend" id="s1-legend"></div>
+  </div>
+  <div class="section-chart" id="chart-s1"></div>
+</section>
+
+<!-- S2: SCATTER SALARY vs PERFORMANCE -->
+<section class="viz-section" id="s2">
+  <div class="section-text">
+    <span class="section-tag">02 — Central</span>
+    <h2>¿Correlaciona el<br>salario con el<br>rendimiento?</h2>
+    <p>Cada punto es un jugador en una temporada. Eje X: porcentaje del cap salarial. Eje Y: PER (Player Efficiency Rating).</p>
+    <p>La correlación existe pero es <strong>ruidosa</strong>: muchos jugadores bien pagados rinden poco, y muchos grandes jugadores cobran por debajo de su nivel.</p>
+    <div class="era-filter" id="s2-filter">
+      <button class="era-btn active" data-era="all">Todas las eras</button>
+      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+    </div>
+    <p class="stat-callout" id="s2-corr"></p>
+  </div>
+  <div class="section-chart" id="chart-s2"></div>
+</section>
+
+<!-- S3: BARGAINS vs OVERPAID -->
+<section class="viz-section" id="s3">
+  <div class="section-text">
+    <span class="section-tag">03 — Extremos</span>
+    <h2>Los chollos y<br>los sobrepagados</h2>
+    <p><code>salary_vs_per</code> = percentil salarial − percentil PER. Valores negativos: rendían más de lo que cobraban. Positivos: cobraban más de lo que rendían.</p>
+    <div class="search-box">
+      <input id="player-search" type="text" placeholder="Buscar jugador…" autocomplete="off">
+    </div>
+    <div class="era-filter" id="s3-filter">
+      <button class="era-btn active" data-era="all">Todas</button>
+      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+    </div>
+  </div>
+  <div class="section-chart" id="chart-s3"></div>
+</section>
+
+<!-- S4: VALUE INDEX -->
+<section class="viz-section" id="s4">
+  <div class="section-text">
+    <span class="section-tag">04 — Eficiencia</span>
+    <h2>¿Quién aporta<br>más por dólar?</h2>
+    <p><code>value_index</code> = Win Shares / % del cap. Mide retorno deportivo por unidad de inversión relativa. Solo jugadores con WS > 3.</p>
+    <p>Los mejores contratos de la historia NBA, sin importar la era.</p>
+    <div class="era-filter" id="s4-filter">
+      <button class="era-btn active" data-era="all">Todas</button>
+      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+    </div>
+  </div>
+  <div class="section-chart" id="chart-s4"></div>
+</section>
+
+<!-- S5: POSITION INFLATION -->
+<section class="viz-section" id="s5">
+  <div class="section-text">
+    <span class="section-tag">05 — Posiciones</span>
+    <h2>¿Qué posición<br>se infló más?</h2>
+    <p>Evolución del salario medio (% del cap) por posición a lo largo de 24 temporadas.</p>
+    <p>El punto de guardia (<strong>PG</strong>) y el alero pequeño (<strong>SF</strong>) han experimentado la mayor revalorización relativa en la era moderna.</p>
+    <div class="legend" id="s5-legend"></div>
+  </div>
+  <div class="section-chart" id="chart-s5"></div>
+</section>
+
+<!-- S6: TEAMS -->
+<section class="viz-section" id="s6">
+  <div class="section-text">
+    <span class="section-tag">06 — Franquicias</span>
+    <h2>¿Qué equipos<br>invierten mejor?</h2>
+    <p>Ranking de franquicias por <code>value_index</code> medio acumulado. Refleja la capacidad de un equipo para encontrar contratos eficientes a lo largo de 24 temporadas.</p>
+    <p>Los equipos con mejor gestión del cap aparecen en verde.</p>
+  </div>
+  <div class="section-chart" id="chart-s6"></div>
+</section>
+
+<!-- S7: INTERNATIONALIZATION -->
+<section class="viz-section" id="s7">
+  <div class="section-text">
+    <span class="section-tag">07 — Vista Social</span>
+    <h2>La NBA se vuelve<br>global</h2>
+    <p>Porcentaje de jugadores internacionales por temporada, desglosado por región geográfica.</p>
+    <p class="note">Nota: los datos de nacionalidad son más completos para temporadas recientes (2016–2024). Los datos previos a 2016 están parcialmente incompletos por limitaciones de la API.</p>
+    <div class="legend" id="s7-legend"></div>
+  </div>
+  <div class="section-chart" id="chart-s7"></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>Visualización de Datos · Master Ciencia de Datos, UOC · 2026</p>
+  <p>Datos: Basketball-Reference (stats) · ESPN (salarios) · nba_api</p>
+  <p>Javier Sánchez Martínez · <a href="https://github.com/javism1d/nba-salary-viz" target="_blank">GitHub</a></p>
+</footer>
+
+<!-- TOOLTIP -->
+<div id="tooltip"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
