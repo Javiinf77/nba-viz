@@ -13,6 +13,7 @@ const C = {
 };
 const ERAS = { era1: '2000–07', era2: '2008–15', era3: '2016–24' };
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
+const POS_LABEL = { PG: 'Base', SG: 'Escolta', SF: 'Alero', PF: 'Ala-Pívot', C: 'Pívot' };
 
 // ── STATE ─────────────────────────────────────────────────
 let D = [];            // full dataset
@@ -60,9 +61,9 @@ function svgOf(id, h = 420) {
     .attr('width', W).attr('height', H);
 }
 
-function innerDims(id, h = 420) {
+function innerDims(id, h = 420, mr = C.m.right) {
   const el = document.getElementById(id);
-  const W = (el.clientWidth || 640) - C.m.left - C.m.right;
+  const W = (el.clientWidth || 640) - C.m.left - mr;
   const H = h - C.m.top - C.m.bottom;
   return { W, H };
 }
@@ -85,20 +86,70 @@ function drawGrid(g, { W, H }, { xScale, yScale, nx = 5, ny = 5 }) {
 
 // ── DATA LOAD ─────────────────────────────────────────────
 document.body.insertAdjacentHTML('beforeend', `
-  <div id="loading"><div class="loader-bar"><div class="loader-fill"></div></div><span>Cargando 14.447 registros…</span></div>
+  <div id="loading"><div class="loader-bar"><div class="loader-fill"></div></div><span>Cargando dataset NBA…</span></div>
 `);
+
+// Re-classify region from country to fix mismatches in the pre-built CSV
+function fixRegion(country) {
+  if (!country || country === 'nan' || country.trim() === '') return null;
+  const c = country.toLowerCase().trim();
+  const us = new Set(['usa', 'united states', 'us', 'u.s.a.', 'united states of america']);
+  if (us.has(c)) return 'USA';
+  if (c === 'canada') return 'Canada';
+  const europe = new Set([
+    'spain','france','germany','italy','greece','serbia','croatia','slovenia',
+    'lithuania','latvia','estonia','georgia','ukraine','russia','turkey',
+    'czech republic','slovakia','poland','sweden','norway','denmark','finland',
+    'switzerland','austria','belgium','netherlands','portugal','hungary',
+    'romania','bulgaria','bosnia','montenegro','north macedonia','albania',
+    'kosovo','israel','united kingdom','great britain','england','scotland',
+    'ireland','wales','cyprus','malta','luxembourg','iceland','moldova',
+    'belarus','north ireland','northern ireland','montenegro',
+  ]);
+  const latam = new Set([
+    'brazil','argentina','venezuela','colombia','mexico','puerto rico',
+    'dominican republic','cuba','haiti','jamaica','panama','peru','ecuador',
+    'chile','uruguay','paraguay','bolivia','bahamas','saint lucia',
+    'trinidad and tobago','barbados','guyana','suriname','nicaragua',
+    'honduras','costa rica','el salvador','guatemala','belize',
+    'antigua and barbuda','grenada','saint vincent and the grenadines',
+    'cayman islands','virgin islands',
+  ]);
+  const africa = new Set([
+    'nigeria','cameroon','senegal','democratic republic of the congo',
+    'drc','dr congo','congo','republic of the congo','south africa','egypt',
+    'ghana','ivory coast',"cote d'ivoire",'mali','gabon','guinea',
+    'south sudan','sudan','ethiopia','kenya','morocco','algeria','tunisia',
+    'angola','tanzania','mozambique','zimbabwe','namibia','botswana',
+    'sierra leone','liberia','togo','benin','burkina faso','niger','chad',
+    'madagascar','rwanda','uganda','zambia',
+  ]);
+  const asia = new Set([
+    'china','japan','australia','new zealand','south korea','philippines',
+    'india','iran','lebanon','taiwan','hong kong','indonesia','malaysia',
+    'singapore','thailand','vietnam','kazakhstan','uzbekistan','georgia',
+  ]);
+  if (europe.has(c)) return 'Europe';
+  if (latam.has(c)) return 'Latin America';
+  if (africa.has(c)) return 'Africa';
+  if (asia.has(c)) return 'Asia/Oceania';
+  return 'Other International';
+}
 
 d3.csv('data/nba_dataset.csv', row => {
   const per = +row.per, salPct = +row.salary_pct_cap, ws = +row.ws;
   if (!isFinite(per) || !isFinite(salPct) || per <= 0 || salPct <= 0) return null;
+  const rawCountry = (row.country || '').trim();
+  const region = rawCountry ? (fixRegion(rawCountry) || 'Unknown') : 'USA';
+  const isIntl = region !== 'USA' && region !== 'Unknown';
   return {
     player_name: row.player_name,
     season: row.season,
     team: row.team,
     age: +row.age,
     position: row.position,
-    region: row.region || 'Unknown',
-    is_international: row.is_international === 'True',
+    region,
+    is_international: isIntl,
     pts: +row.pts,
     per,
     ws,
@@ -158,7 +209,7 @@ function animCount(sel, from, to, dur) {
 // ── NAV DOTS ──────────────────────────────────────────────
 function setupNav() {
   const dots = document.querySelectorAll('.dot');
-  const sectionIds = ['s1','s2','s3','s4','s5','s6','s7'];
+  const sectionIds = ['s0','s1','s2','s3','s4','s5','s6','s7'];
   const io = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
@@ -174,6 +225,7 @@ function setupNav() {
 // ── INTERSECTION OBSERVER (draw on enter) ─────────────────
 function setupObserver() {
   const DRAW = {
+    s0: drawS0,
     s1: drawS1, s2: drawS2, s3: drawS3, s4: drawS4,
     s5: drawS5, s6: drawS6, s7: drawS7,
   };
@@ -207,6 +259,133 @@ function wireEra(containerId, cb) {
       btn.classList.add('active');
       cb(btn.dataset.era);
     });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// S0 — PIPELINE DIAGRAM
+// ═══════════════════════════════════════════════════════════
+function drawS0() {
+  const el = document.getElementById('chart-s0');
+  el.innerHTML = '';
+  const W = el.clientWidth || 700;
+  const H = 340;
+  const svg = d3.select('#chart-s0').append('svg').attr('width', W).attr('height', H);
+
+  // arrowhead marker
+  svg.append('defs').append('marker')
+    .attr('id', 'arr0').attr('viewBox', '0 0 8 8')
+    .attr('refX', 7).attr('refY', 4)
+    .attr('markerWidth', 5).attr('markerHeight', 5)
+    .attr('orient', 'auto')
+    .append('path').attr('d', 'M0,0 L8,4 L0,8 Z')
+    .attr('fill', C.muted);
+
+  const BOX_W = Math.min(160, W * 0.22);
+  const BOX_H = 56;
+  const ROW_GAP = 22;
+  const n = 3;
+  const totalSrcH = n * BOX_H + (n - 1) * ROW_GAP;
+  const startY = (H - totalSrcH) / 2;
+
+  const cx0 = 16;
+  const cx1 = cx0 + BOX_W + Math.max(60, W * 0.10);
+  const cx2 = cx1 + BOX_W + Math.max(55, W * 0.09);
+  const cx3 = cx2 + BOX_W + Math.max(55, W * 0.09);
+
+  const procY = (H - BOX_H) / 2;
+
+  const sources = [
+    { name: 'Basketball-Ref', sub: 'Per Game + Advanced', tag: '01_scrape_bbref.py', color: C.era1 },
+    { name: 'ESPN Salaries',  sub: '11.235 registros',   tag: '02_scrape_salaries.py', color: C.era3 },
+    { name: 'NBA API',        sub: 'PlayerIndex',        tag: 'nba_api',               color: C.era2 },
+  ];
+
+  sources.forEach((src, i) => {
+    const sy = startY + i * (BOX_H + ROW_GAP);
+    const cy = sy + BOX_H / 2;
+
+    // box
+    const g = svg.append('g').attr('transform', `translate(${cx0},${sy})`);
+    g.append('rect').attr('width', BOX_W).attr('height', BOX_H).attr('rx', 6)
+      .attr('fill', 'none').attr('stroke', src.color).attr('stroke-width', 1.5).attr('stroke-opacity', .75);
+    g.append('text').attr('x', 10).attr('y', 19)
+      .attr('fill', src.color).attr('font-size', 11).attr('font-weight', 600)
+      .attr('font-family', 'IBM Plex Mono').text(src.name);
+    g.append('text').attr('x', 10).attr('y', 33)
+      .attr('fill', C.muted).attr('font-size', 9.5).attr('font-family', 'IBM Plex Sans').text(src.sub);
+    g.append('text').attr('x', 10).attr('y', 48)
+      .attr('fill', src.color).attr('fill-opacity', .55).attr('font-size', 8)
+      .attr('font-family', 'IBM Plex Mono').text(src.tag);
+
+    // curved connector to proc box
+    const ex = cx0 + BOX_W;
+    const ey = cy;
+    const px = cx1;
+    const py = procY + BOX_H / 2;
+    svg.append('path')
+      .attr('d', `M${ex},${ey} C${ex + 35},${ey} ${px - 35},${py} ${px},${py}`)
+      .attr('fill', 'none').attr('stroke', src.color).attr('stroke-opacity', .35)
+      .attr('stroke-width', 1.5).attr('stroke-dasharray', '4,3');
+  });
+
+  // Processing box
+  const pg = svg.append('g').attr('transform', `translate(${cx1},${procY})`);
+  pg.append('rect').attr('width', BOX_W).attr('height', BOX_H).attr('rx', 6)
+    .attr('fill', 'rgba(251,146,60,.07)').attr('stroke', C.accent).attr('stroke-width', 1.5).attr('stroke-opacity', .8);
+  pg.append('text').attr('x', 10).attr('y', 19)
+    .attr('fill', C.accent).attr('font-size', 11).attr('font-weight', 600)
+    .attr('font-family', 'IBM Plex Mono').text('build_dataset.py');
+  pg.append('text').attr('x', 10).attr('y', 33)
+    .attr('fill', C.muted).attr('font-size', 9.5).attr('font-family', 'IBM Plex Sans').text('merge · dedup traded');
+  pg.append('text').attr('x', 10).attr('y', 48)
+    .attr('fill', C.muted).attr('font-size', 9).attr('font-family', 'IBM Plex Sans').text('compute KPIs · ≥20 GP');
+
+  // Arrow proc → output
+  svg.append('line')
+    .attr('x1', cx1 + BOX_W + 3).attr('y1', procY + BOX_H / 2)
+    .attr('x2', cx2 - 5).attr('y2', procY + BOX_H / 2)
+    .attr('stroke', C.muted).attr('stroke-width', 2).attr('marker-end', 'url(#arr0)');
+
+  // Output box
+  const og = svg.append('g').attr('transform', `translate(${cx2},${procY})`);
+  og.append('rect').attr('width', BOX_W).attr('height', BOX_H).attr('rx', 6)
+    .attr('fill', 'rgba(96,165,250,.07)').attr('stroke', C.era1).attr('stroke-width', 1.5).attr('stroke-opacity', .8);
+  og.append('text').attr('x', 10).attr('y', 19)
+    .attr('fill', C.era1).attr('font-size', 11).attr('font-weight', 600)
+    .attr('font-family', 'IBM Plex Mono').text('nba_dataset.csv');
+  og.append('text').attr('x', 10).attr('y', 33)
+    .attr('fill', C.muted).attr('font-size', 9.5).attr('font-family', 'IBM Plex Sans').text('8.139 rows · 37 cols');
+  og.append('text').attr('x', 10).attr('y', 48)
+    .attr('fill', C.muted).attr('font-size', 9).attr('font-family', 'IBM Plex Sans').attr('opacity', .7).text('2000-01 → 2023-24');
+
+  // Derived metrics row — bottom of chart
+  const metrics = [
+    { name: 'salary_pct_cap', desc: '% cap · cross-era' },
+    { name: 'value_index',    desc: 'WS / %cap' },
+    { name: 'salary_vs_per',  desc: 'Δ percentiles' },
+    { name: 'pts_per_dollar', desc: 'PTS / $M' },
+  ];
+  const metY = H - 68;
+  const mW = (W - 40) / metrics.length;
+
+  svg.append('text').attr('x', 20).attr('y', metY - 6)
+    .attr('fill', C.muted).attr('font-size', 8.5).attr('font-family', 'IBM Plex Sans')
+    .attr('opacity', .7).text('Métricas derivadas:');
+
+  metrics.forEach((m, i) => {
+    const mx = 20 + i * mW;
+    svg.append('rect').attr('x', mx).attr('y', metY).attr('width', mW - 8).attr('height', 36)
+      .attr('rx', 5).attr('fill', 'rgba(255,255,255,.03)')
+      .attr('stroke', 'rgba(192,132,252,.25)').attr('stroke-width', 1);
+    svg.append('text').attr('x', mx + (mW - 8) / 2).attr('y', metY + 15)
+      .attr('text-anchor', 'middle').attr('fill', C.accent2)
+      .attr('font-size', 10).attr('font-family', 'IBM Plex Mono').attr('font-weight', 600)
+      .text(m.name);
+    svg.append('text').attr('x', mx + (mW - 8) / 2).attr('y', metY + 28)
+      .attr('text-anchor', 'middle').attr('fill', C.muted)
+      .attr('font-size', 8.5).attr('font-family', 'IBM Plex Sans')
+      .text(m.desc);
   });
 }
 
@@ -417,9 +596,13 @@ function drawS2() {
 // ═══════════════════════════════════════════════════════════
 function drawS3() {
   const H = 500;
-  const { W } = innerDims('chart-s3', H);
-  const svg = svgOf('chart-s3', H);
-  const g = gTranslate(svg);
+  const SIDE = 165; // symmetric margins so zero line stays centered
+  const el3 = document.getElementById('chart-s3');
+  el3.innerHTML = '';
+  const W_full = el3.clientWidth || 640;
+  const W = W_full - SIDE - SIDE;
+  const svg = d3.select('#chart-s3').append('svg').attr('width', W_full).attr('height', H);
+  const g = svg.append('g').attr('transform', `translate(${SIDE},${C.m.top})`);
 
   const search = (document.getElementById('player-search')?.value || '').toLowerCase().trim();
   let rows = s3Era === 'all' ? D : D.filter(d => d.era === s3Era);
@@ -490,12 +673,13 @@ function drawS3() {
 
     // Player name label
     const nameX = d.salary_vs_per > 0 ? xScale(d.salary_vs_per) + 8 : xScale(d.salary_vs_per) - 8;
+    const shortName = d.player_name.length > 17 ? d.player_name.slice(0, 16) + '…' : d.player_name;
     g.append('text')
       .attr('x', nameX).attr('y', cy + 4)
       .attr('text-anchor', d.salary_vs_per > 0 ? 'start' : 'end')
       .attr('fill', C.text).attr('font-size', 10)
       .attr('font-family', 'IBM Plex Sans')
-      .text(`${d.player_name} (${d.season.split('-')[0]})`);
+      .text(`${shortName} (${d.season.split('-')[0]})`);
   });
 
   g.append('g').attr('class', 'axis')
@@ -506,7 +690,7 @@ function drawS3() {
   g.append('text').attr('x', xScale(-absMax * .5)).attr('y', -10)
     .attr('text-anchor', 'middle').attr('fill', C.green)
     .attr('font-size', 11).attr('font-family', 'IBM Plex Sans').attr('font-weight', 600)
-    .text('◀ Chollos (rendían más de lo que cobraban)');
+    .text('◀ Chollos');
   g.append('text').attr('x', xScale(absMax * .5)).attr('y', -10)
     .attr('text-anchor', 'middle').attr('fill', C.red)
     .attr('font-size', 11).attr('font-family', 'IBM Plex Sans').attr('font-weight', 600)
@@ -520,7 +704,7 @@ function drawS4() {
   const TOP_N = 20;
   const ITEM_H = 22;
   const H = TOP_N * ITEM_H + C.m.top + C.m.bottom + 20;
-  const { W } = innerDims('chart-s4', H);
+  const { W } = innerDims('chart-s4', H, 185);
   const svg = svgOf('chart-s4', H);
   const g = gTranslate(svg);
 
@@ -590,7 +774,7 @@ function drawS4() {
 // ═══════════════════════════════════════════════════════════
 function drawS5() {
   const H = 420;
-  const { W } = innerDims('chart-s5', H);
+  const { W } = innerDims('chart-s5', H, 95);
   const svg = svgOf('chart-s5', H);
   const g = gTranslate(svg);
 
@@ -640,7 +824,7 @@ function drawS5() {
         .attr('font-size', 11)
         .attr('font-family', 'IBM Plex Sans')
         .attr('font-weight', 600)
-        .text(pos);
+        .text(POS_LABEL[pos] || pos);
     }
 
     // Hover dots
@@ -652,7 +836,7 @@ function drawS5() {
       .attr('fill', C.pos[pos])
       .attr('fill-opacity', 0)
       .on('mouseover', (e, d) => {
-        tooltip(`<strong>${pos} — ${d.season}</strong>
+        tooltip(`<strong>${POS_LABEL[pos] || pos} — ${d.season}</strong>
           <div class="tt-row"><span class="tt-label">Media %cap</span><span class="tt-val">${fmt.pct(d.val)}%</span></div>`);
         ttMove(e);
         d3.select(e.currentTarget).attr('fill-opacity', 1);
@@ -677,7 +861,7 @@ function drawS5() {
     legend.insertAdjacentHTML('beforeend', `
       <div class="legend-item">
         <div class="legend-swatch" style="background:${C.pos[pos]}"></div>
-        <span>${pos}</span>
+        <span>${POS_LABEL[pos] || pos}</span>
       </div>`);
   });
 }
@@ -686,7 +870,8 @@ function drawS5() {
 // S6 — TEAM RANKINGS
 // ═══════════════════════════════════════════════════════════
 function drawS6() {
-  const teams = [...new Set(D.map(d => d.team))].filter(t => t && t !== 'TOT');
+  const skipTeams = new Set(['TOT', '2TM', '3TM', '4TM', '5TM']);
+  const teams = [...new Set(D.map(d => d.team))].filter(t => t && !skipTeams.has(t));
   const teamData = teams.map(team => {
     const rows = D.filter(d => d.team === team && d.ws >= 2 && isFinite(d.value_index) && d.value_index > 0);
     return { team, vi: d3.mean(rows, d => d.value_index) || 0, n: rows.length };
@@ -758,9 +943,10 @@ function drawS7() {
   const g = gTranslate(svg);
 
   const seasons = [...new Set(D.map(d => d.season))].sort();
-  const regions = ['Europe', 'Latin America', 'Africa', 'Asia/Oceania', 'Other International'];
+  const regions = ['Europe', 'Canada', 'Latin America', 'Africa', 'Asia/Oceania', 'Other International'];
   const regionColors = {
     'Europe': '#60a5fa',
+    'Canada': '#f43f5e',
     'Latin America': '#4ade80',
     'Africa': '#f59e0b',
     'Asia/Oceania': '#c084fc',

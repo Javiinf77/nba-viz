@@ -14,7 +14,8 @@
 <nav id="top-nav">
   <span class="nav-title">NBA Salary · 24 Seasons</span>
   <div class="nav-dots">
-    <a class="dot active" href="#s1" data-label="Salarios"></a>
+    <a class="dot active" href="#s0" data-label="Datos"></a>
+    <a class="dot" href="#s1" data-label="Cap"></a>
     <a class="dot" href="#s2" data-label="Rendimiento"></a>
     <a class="dot" href="#s3" data-label="Chollos"></a>
     <a class="dot" href="#s4" data-label="Valor"></a>
@@ -27,7 +28,7 @@
 <!-- HERO -->
 <section id="hero">
   <div class="hero-inner">
-    <p class="hero-eyebrow">2000–01 → 2023–24 · 1.573 jugadores · 14.447 registros</p>
+    <p class="hero-eyebrow">2000–01 → 2023–24 · 24 temporadas · +8.000 registros</p>
     <h1 class="hero-title">¿Se paga lo que<br>se rinde?</h1>
     <p class="hero-sub">24 años de evidencia en la NBA</p>
     <div class="hero-stats">
@@ -35,109 +36,220 @@
       <div class="hstat"><span class="hstat-val" id="h-players">0</span><span class="hstat-label">jugadores únicos</span></div>
       <div class="hstat"><span class="hstat-val" id="h-maxsal">$0M</span><span class="hstat-label">salario máximo</span></div>
     </div>
-    <a class="hero-cta" href="#s1">Explorar ↓</a>
+    <a class="hero-cta" href="#s0">Explorar ↓</a>
+  </div>
+</section>
+
+<!-- S0: DATASET OVERVIEW -->
+<section class="viz-section" id="s0">
+  <div class="section-header">
+    <span class="section-tag">00 — Dataset</span>
+    <h2>Los datos detrás de la visualización</h2>
+  </div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Pipeline Python reproducible. Tres fuentes integradas, cuatro métricas derivadas.</p>
+      <div class="source-grid">
+        <div class="source-card">
+          <div class="source-card-name">Basketball-Reference</div>
+          <div class="source-card-stat">2 <span>ficheros</span></div>
+          <div class="source-card-label">Per Game + Advanced Stats · 24 temporadas</div>
+        </div>
+        <div class="source-card">
+          <div class="source-card-name">ESPN Salaries</div>
+          <div class="source-card-stat">11.235 <span>registros</span></div>
+          <div class="source-card-label">Scraping Playwright · headless=False · WAF bypass</div>
+        </div>
+        <div class="source-card">
+          <div class="source-card-name">NBA API</div>
+          <div class="source-card-stat">PlayerIndex</div>
+          <div class="source-card-label">Nacionalidad · Records de equipo por temporada</div>
+        </div>
+      </div>
+      <div class="dataset-kpis">
+        <div class="kpi-item"><span class="kpi-val">8.139</span><span class="kpi-label">filas finales</span></div>
+        <div class="kpi-item"><span class="kpi-val">37</span><span class="kpi-label">columnas</span></div>
+        <div class="kpi-item"><span class="kpi-val">≥ 20</span><span class="kpi-label">partidos mín.</span></div>
+      </div>
+    </div>
+    <div class="section-chart" id="chart-s0"></div>
+  </div>
+  <div class="section-narrative">
+    <p>El pipeline se implementó en tres scripts Python ejecutados secuencialmente. <strong>01_scrape_bbref.py</strong> descarga estadísticas per game y avanzadas de Basketball-Reference para las 24 temporadas (2000-01 a 2023-24), usando BeautifulSoup para parsear tablas HTML estáticas. <strong>02_scrape_salaries.py</strong> raspa los salarios de ESPN con Playwright en modo visible (<em>headless=False</em>) para eludir la protección AWS WAF que bloquea las peticiones HTTP directas — un simple <code>requests.get()</code> recibe un 202 con challenge JavaScript, no datos.</p>
+    <p><strong>03_build_dataset.py</strong> realiza el merge aplicando correcciones críticas: <em>deduplicación de jugadores traspasados</em> (Basketball-Reference añade una fila combinada <code>2TM/3TM/4TM/5TM</code> más una por cada equipo; sin deduplicar, un jugador traspasado a dos equipos aparece tres veces, triplicando filas via producto cartesiano en el join), normalización de nombres para el join, y filtro de jugadores con menos de 20 partidos jugados.</p>
+    <p>Se computan <strong>cuatro métricas derivadas</strong> clave: <code>salary_pct_cap</code> expresa el salario como porcentaje del cap de esa temporada (comparación cross-era honesta); <code>value_index</code> divide Win Shares por salary_pct_cap (retorno deportivo por unidad de inversión relativa); <code>salary_vs_per</code> calcula la diferencia de percentiles salarial y de PER dentro de cada temporada (invariante a inflación del cap); y <code>pts_per_dollar</code> mide puntos por millón de dólares gastado.</p>
+    <p>La clasificación geográfica de jugadores internacionales usa un mapa de países a cinco regiones (Europa, América Latina, África, Asia/Oceanía, Otros) construido manualmente. Los jugadores con país desconocido o ausente se clasifican como americanos por defecto para evitar falsos positivos en la tasa de internacionalización. Los registros de victoria y playoff por equipo provienen de <code>LeagueStandings</code> via nba_api.</p>
   </div>
 </section>
 
 <!-- S1: SALARY CAP GROWTH -->
 <section class="viz-section" id="s1">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">01 — Contexto</span>
-    <h2>El dinero que hay<br>en juego</h2>
-    <p>El <em>salary cap</em> de la NBA pasó de <strong>$35.5M en 2000</strong> a <strong>$136M en 2024</strong>: un incremento del 283%. El boom del 2016 (acuerdo TV) lo hizo saltar de $70M a $94M en un año.</p>
-    <p>Para comparar salarios entre eras, usamos <code>salary_pct_cap</code> — el porcentaje del cap que representa cada contrato.</p>
-    <div class="legend" id="s1-legend"></div>
+    <h2>El dinero que hay en juego</h2>
   </div>
-  <div class="section-chart" id="chart-s1"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Distribución de salarios (% del cap) por temporada. Boxplot IQR con bigotes P10–P90. Pasa el ratón para ver los percentiles exactos.</p>
+      <div class="legend" id="s1-legend"></div>
+    </div>
+    <div class="section-chart" id="chart-s1"></div>
+  </div>
+  <div class="section-narrative">
+    <p>La distribución tiene una forma consistente en todas las eras: fuertemente asimétrica hacia la derecha. La <strong>mediana</strong> se sitúa entre el 5% y el 7% del cap en todas las temporadas, lo que significa que más de la mitad de los jugadores activos cobran contratos cercanos al mínimo. El grueso de la masa salarial se concentra en pocos contratos grandes visibles en los bigotes superiores (P90), que alcanzan el 25–33%.</p>
+    <p>El pico más llamativo ocurre en <strong>2004-05</strong>, donde las cajas suben bruscamente y el P75 alcanza el 24%. Esto no refleja una subida real del cap —que seguía en $43.9M— sino un artefacto de los datos: el scraping de ESPN solo capturó <strong>120 jugadores</strong> ese año frente a 400–500 de temporadas adyacentes. Al faltar los salarios mínimos, la media y los percentiles se desplazan al alza artificialmente.</p>
+    <p>En la <strong>Era 2 (2008–15, morado)</strong> las distribuciones se estrechan: el P90 cae a ~20–22% y la varianza se reduce. El cap congelado entre 2009 y 2012 comprimió los contratos de free agents de esos años. En la <strong>Era 3 (2016+, naranja)</strong>, el salto del cap en 2016-17 genera un efecto transitorio: las cajas se ensanchan ese año antes de estabilizarse de nuevo.</p>
+    <p>Para comparar contratos entre eras de forma honesta, todas las visualizaciones usan <code>salary_pct_cap</code>. Un contrato de $3M en 2001 equivalía al 8.5% del cap; ese mismo porcentaje equivale a $11.6M en 2023. Sin esta normalización, comparar contratos de distintas épocas es comparar manzanas con naranjas.</p>
+  </div>
 </section>
 
 <!-- S2: SCATTER SALARY vs PERFORMANCE -->
 <section class="viz-section" id="s2">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">02 — Central</span>
-    <h2>¿Correlaciona el<br>salario con el<br>rendimiento?</h2>
-    <p>Cada punto es un jugador en una temporada. Eje X: porcentaje del cap salarial. Eje Y: PER (Player Efficiency Rating).</p>
-    <p>La correlación existe pero es <strong>ruidosa</strong>: muchos jugadores bien pagados rinden poco, y muchos grandes jugadores cobran por debajo de su nivel.</p>
-    <div class="era-filter" id="s2-filter">
-      <button class="era-btn active" data-era="all">Todas las eras</button>
-      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
-      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
-      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
-    </div>
-    <p class="stat-callout" id="s2-corr"></p>
+    <h2>¿Correlaciona el salario con el rendimiento?</h2>
   </div>
-  <div class="section-chart" id="chart-s2"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Scatter: salary_pct_cap (X) vs PER (Y). Regresión OLS calculada sobre la muestra visible. Pasa el ratón sobre cualquier punto para identificar al jugador.</p>
+      <div class="era-filter" id="s2-filter">
+        <button class="era-btn active" data-era="all">Todas las eras</button>
+        <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+        <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+        <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+      </div>
+      <p class="stat-callout" id="s2-corr"></p>
+    </div>
+    <div class="section-chart" id="chart-s2"></div>
+  </div>
+  <div class="section-narrative">
+    <p>La nube de puntos revela un patrón claro: <strong>la masa de jugadores se concentra entre 0% y 10% del cap</strong> con un rango de PER amplísimo (5–30). A medida que el salario sube por encima del 15%, los PER se concentran más en la franja 12–25 — los contratos grandes tienden a ir a jugadores que al menos rinden de forma consistente — pero siguen existiendo outliers llamativos a ambos lados.</p>
+    <p>Lo más revelador es lo que ocurre en la franja de <strong>salario bajo (0–8%)</strong>: ahí conviven jugadores con PER de 5 y jugadores con PER de 30. Esos puntos con PER alto y salario mínimo son jóvenes en contratos rookie o veteranos que vuelven con contratos de prueba. Esa franja es donde se esconden los mejores chollos de la liga, y es el origen del value_index de la sección 04.</p>
+    <p>La línea de regresión tiene pendiente positiva pero muy suave. El R² calculado en tiempo real confirma que el salario explica <strong>menos del 20% de la varianza en PER</strong> — el mercado tiene correlación positiva, pero está lejos de ser eficiente. Filtra por era para ver si esa eficiencia mejora a lo largo del tiempo.</p>
+    <p class="note">Se muestran hasta 3.000 puntos muestreados aleatoriamente. La línea punteada es la regresión OLS calculada sobre la muestra visible del filtro activo.</p>
+  </div>
 </section>
 
 <!-- S3: BARGAINS vs OVERPAID -->
 <section class="viz-section" id="s3">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">03 — Extremos</span>
-    <h2>Los chollos y<br>los sobrepagados</h2>
-    <p><code>salary_vs_per</code> = percentil salarial − percentil PER. Valores negativos: rendían más de lo que cobraban. Positivos: cobraban más de lo que rendían.</p>
-    <div class="search-box">
-      <input id="player-search" type="text" placeholder="Buscar jugador…" autocomplete="off">
-    </div>
-    <div class="era-filter" id="s3-filter">
-      <button class="era-btn active" data-era="all">Todas</button>
-      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
-      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
-      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
-    </div>
+    <h2>Los chollos y los sobrepagados</h2>
   </div>
-  <div class="section-chart" id="chart-s3"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Lollipop de salary_vs_per. Verde (izquierda) = rendían más de lo que cobraban. Rojo (derecha) = cobraban más de lo que rendían.</p>
+      <div class="search-box">
+        <input id="player-search" type="text" placeholder="Buscar jugador…" autocomplete="off">
+      </div>
+      <div class="era-filter" id="s3-filter">
+        <button class="era-btn active" data-era="all">Todas</button>
+        <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+        <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+        <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+      </div>
+    </div>
+    <div class="section-chart" id="chart-s3"></div>
+  </div>
+  <div class="section-narrative">
+    <p>Los <strong>sobrepagados históricos</strong> que encabezan la lista son reveladores: <em>Stephon Marbury</em> lidera, seguido de <em>Vin Baker (2004)</em>, <em>Chandler Parsons</em> (que aparece dos veces, en dos temporadas distintas), <em>Ryan Anderson</em>, <em>Allen Crabbe (2019)</em> y <em>Rashard Lewis (2011)</em>. No son estrellas en declive —son jugadores que recibieron contratos de mercado sin justificarlo con PER en ningún momento de esas temporadas.</p>
+    <p>Los <strong>chollos</strong> cuentan una historia diferente: <em>Andrei Kirilenko</em> aparece en dos temporadas consecutivas (2003 y 2004), señal de un contrato firmado antes de que la liga valorara correctamente su perfil defensivo. <em>Hassan Whiteside (2014)</em>, <em>Moses Brown (2022)</em> y <em>Trayce Jackson-Davis (2023)</em> son ejemplos modernos de jugadores que explotaron a nivel estadístico estando aún en salario mínimo o cercano. <em>Nick Fazekas</em> y <em>Carl Landry (2007)</em> son exemplos clásicos de jugadores ocultos del mercado.</p>
+    <p>Un patrón recurrente: los sobrepagados son <em>contratos plurianuales firmados sobre expectativas</em> que nunca se cumplieron, mientras que los chollos suelen ser jugadores que <em>sorprendieron en un rol específico</em> antes de que el mercado los re-valorara. La velocidad a la que el mercado corrige cada tipo de error es asimétrica: los chollos se corrigen en la siguiente extensión; los sobrepagados duran hasta que vence el contrato.</p>
+    <p>Usa el buscador para rastrear la trayectoria individual de cualquier jugador: es común ver cómo alguien pasa de chollo en sus primeros años a la zona neutra tras la primera extensión, y vuelve al lado rojo en los últimos años de su segundo gran contrato.</p>
+  </div>
 </section>
 
 <!-- S4: VALUE INDEX -->
 <section class="viz-section" id="s4">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">04 — Eficiencia</span>
-    <h2>¿Quién aporta<br>más por dólar?</h2>
-    <p><code>value_index</code> = Win Shares / % del cap. Mide retorno deportivo por unidad de inversión relativa. Solo jugadores con WS > 3.</p>
-    <p>Los mejores contratos de la historia NBA, sin importar la era.</p>
-    <div class="era-filter" id="s4-filter">
-      <button class="era-btn active" data-era="all">Todas</button>
-      <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
-      <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
-      <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
-    </div>
+    <h2>¿Quién aporta más por dólar?</h2>
   </div>
-  <div class="section-chart" id="chart-s4"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Top 20 contratos por value_index = WS ÷ salary_pct_cap. Filtro mínimo WS ≥ 3 para excluir impacto marginal. Los mejores contratos de la historia NBA.</p>
+      <div class="era-filter" id="s4-filter">
+        <button class="era-btn active" data-era="all">Todas</button>
+        <button class="era-btn" data-era="era1" style="--c:#60a5fa">2000–07</button>
+        <button class="era-btn" data-era="era2" style="--c:#c084fc">2008–15</button>
+        <button class="era-btn" data-era="era3" style="--c:#fb923c">2016–24</button>
+      </div>
+    </div>
+    <div class="section-chart" id="chart-s4"></div>
+  </div>
+  <div class="section-narrative">
+    <p>El ranking real no lo encabezan las superestrellas esperadas. <strong>Amir Coffey</strong> y <strong>Devonte' Graham (2020-21)</strong> lideran, seguidos de <em>Enes Freedom (2018-19)</em>, <em>Patrick Beverley (2022-23)</em>, <em>Juan Toscano-Anderson (2020-21)</em> y <em>Rudy Gobert (2016-17)</em>. Son jugadores de rotación o titulares sólidos que produjeron Win Shares significativas (≥3) con un coste salarial mínimo o muy bajo. Eso es exactamente lo que mide el value_index.</p>
+    <p>Las superestrellas no aparecen porque su salary_pct_cap es tan alto que divide el WS y lo reduce. Un jugador que produce 12 WS al 25% del cap tiene value_index de 0.48; un jugador que produce 4 WS al 0.5% del cap tiene value_index de 8. La métrica <em>no mide quién es mejor jugador</em>, sino quién representa el mayor retorno económico para su equipo.</p>
+    <p>Esta distinción tiene implicaciones prácticas: los equipos campeones suelen combinar una o dos estrellas a precio de mercado (o sobrepagadas) con <em>varios jugadores de alto value_index</em> en el resto del roster. Golden State (2015–2019) es el ejemplo canónico: Curry/Durant/Thompson a precio de mercado o inferior, completados con Draymond Green, Shaun Livingston e Iguodala en contratos eficientes.</p>
+    <p>El color por era muestra que la Era 3 (naranja) domina el ranking global. Esto refleja que en los últimos años los contratos mínimos son más comunes para jugadores productivos, y el cap más alto amplifica el cociente cuando un jugador tiene salary_pct_cap muy bajo.</p>
+  </div>
 </section>
 
 <!-- S5: POSITION INFLATION -->
 <section class="viz-section" id="s5">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">05 — Posiciones</span>
-    <h2>¿Qué posición<br>se infló más?</h2>
-    <p>Evolución del salario medio (% del cap) por posición a lo largo de 24 temporadas.</p>
-    <p>El punto de guardia (<strong>PG</strong>) y el alero pequeño (<strong>SF</strong>) han experimentado la mayor revalorización relativa en la era moderna.</p>
-    <div class="legend" id="s5-legend"></div>
+    <h2>¿Qué posición se infló más?</h2>
   </div>
-  <div class="section-chart" id="chart-s5"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Evolución del salario medio (% del cap) por posición. Cada línea es la media de los jugadores activos en esa posición con ≥ 20 partidos. Pasa el ratón para ver el valor exacto por temporada.</p>
+      <div class="legend" id="s5-legend"></div>
+    </div>
+    <div class="section-chart" id="chart-s5"></div>
+  </div>
+  <div class="section-narrative">
+    <p>El patrón más llamativo es el <strong>pico pronunciado de 2003-04 y 2004-05</strong> donde todas las posiciones suben bruscamente a 15–18%. Esto no refleja una explosión salarial real: es un artefacto de datos. El scraping de ESPN solo capturó 180 jugadores en 2003-04 y <strong>120 en 2004-05</strong>, frente a 400–500 en temporadas adyacentes. Al faltar los contratos mínimos, la media por posición se calcula solo sobre los jugadores mejor pagados, disparando artificialmente el valor medio.</p>
+    <p>Eliminando ese pico, el patrón real es notable por su estabilidad: <strong>todas las posiciones convergen</strong> en una franja de 6–10% desde 2007 hasta 2020, oscilando en paralelo. No hay una posición que se haya inflado claramente más que las demás durante la mayor parte del período. Las diferencias entre posiciones son pequeñas comparadas con la varianza temporal.</p>
+    <p>La divergencia sí aparece al final: desde 2020-21, el <strong>base (PG)</strong> sube hasta ~11% y se separa claramente del resto, que se queda en el rango 6–8%. Este es el reflejo de la era del creador de juego: Curry, Lillard, Trae Young, Luka Dončić y similares reciben los contratos máximos más altos mientras el resto de posiciones se financia con contratos más ajustados en un cap limitado.</p>
+    <p class="note">La posición primaria proviene de Basketball-Reference. Jugadores listados en múltiples posiciones aparecen en ambas líneas, lo que puede suavizar las diferencias entre posiciones adyacentes (ej. SF y PF).</p>
+  </div>
 </section>
 
 <!-- S6: TEAMS -->
 <section class="viz-section" id="s6">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">06 — Franquicias</span>
-    <h2>¿Qué equipos<br>invierten mejor?</h2>
-    <p>Ranking de franquicias por <code>value_index</code> medio acumulado. Refleja la capacidad de un equipo para encontrar contratos eficientes a lo largo de 24 temporadas.</p>
-    <p>Los equipos con mejor gestión del cap aparecen en verde.</p>
+    <h2>¿Qué equipos invierten mejor?</h2>
   </div>
-  <div class="section-chart" id="chart-s6"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Ranking por value_index medio acumulado. Solo jugadores WS ≥ 2 y franquicias con ≥ 20 registros válidos. Verde = por encima de la mediana de franquicias.</p>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#4ade80"></div><span>Por encima de la mediana</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#fb923c"></div><span>Por debajo de la mediana</span></div>
+      </div>
+    </div>
+    <div class="section-chart" id="chart-s6"></div>
+  </div>
+  <div class="section-narrative">
+    <p><strong>GSW (Golden State)</strong> y <strong>HOU (Houston)</strong> empatan en el primer puesto con 1.19, seguidos de LAC (1.07), SAS (1.06) y MIA (1.05). El liderazgo de GSW y HOU no sorprende: ambas franquicias han combinado durante el período un sistema de juego que extrae máximo rendimiento de jugadores de rotación, con buena identificación de talento infravalorado. SAS (San Antonio) lidera en Era 1 y 2 —la dinastía Popovich se construyó precisamente sobre contratos eficientes más que sobre máximos.</p>
+    <p>En el extremo inferior están <strong>SAC (0.80)</strong>, <strong>CHI (0.80)</strong> y <strong>ORL (0.80)</strong> — franquicias en reconstrucción prolongada que han acumulado contratos ineficientes sin rendimiento compensatorio. <strong>LAL</strong> queda en 0.90, por debajo de la mediana, confirmando que el glamour de Los Ángeles no se traduce en eficiencia de cap. <strong>DAL</strong> (0.88) sorprende negativamente dado que albergó a Nowitzki durante todo el período, lo que sugiere que el resto del roster fue gestionado de forma menos eficiente.</p>
+    <p>El rango total del ranking es estrecho: de 0.80 a 1.19. Las reglas de la CBA (salary cap, luxury tax, excepciones) comprimen deliberadamente las diferencias entre franquicias. No hay margen para diferencias extremas — la liga está diseñada para eso. La variación de ~50% entre el mejor y el peor es significativa pero no dramática.</p>
+    <p class="note">Algunas franquicias han cambiado de nombre o ciudad durante el período (ej. NJN/BKN para Brooklyn, SEA/OKC para Oklahoma City). El análisis trata cada abreviación como entidad separada según Basketball-Reference.</p>
+  </div>
 </section>
 
 <!-- S7: INTERNATIONALIZATION -->
 <section class="viz-section" id="s7">
-  <div class="section-text">
+  <div class="section-header">
     <span class="section-tag">07 — Vista Social</span>
-    <h2>La NBA se vuelve<br>global</h2>
-    <p>Porcentaje de jugadores internacionales por temporada, desglosado por región geográfica.</p>
-    <p class="note">Nota: los datos de nacionalidad son más completos para temporadas recientes (2016–2024). Los datos previos a 2016 están parcialmente incompletos por limitaciones de la API.</p>
-    <div class="legend" id="s7-legend"></div>
+    <h2>La NBA se vuelve global</h2>
   </div>
-  <div class="section-chart" id="chart-s7"></div>
+  <div class="section-body">
+    <div class="section-controls">
+      <p class="controls-intro">Área apilada: % de jugadores internacionales por temporada, desglosado en seis regiones. Pasa el ratón para ver el desglose exacto de cualquier temporada.</p>
+      <div class="legend" id="s7-legend"></div>
+    </div>
+    <div class="section-chart" id="chart-s7"></div>
+  </div>
+  <div class="section-narrative">
+    <p>El gráfico muestra crecimiento prácticamente nulo hasta 2008-09, seguido de una aceleración sostenida que alcanza ~16–17% en 2023-24. Los valores bajos de la primera década <strong>no reflejan la realidad histórica</strong> — Nowitzki, Ginóbili y Gasol ya dominaban la liga en los 2000s — sino una limitación de la fuente: la NBA API no devuelve país de origen para la mayoría de jugadores anteriores a 2010, que quedan clasificados como estadounidenses por defecto.</p>
+    <p>La sorpresa del análisis es <strong>Canadá</strong>, segunda fuente de jugadores internacionales por volumen con 82 jugadores únicos en el dataset. Una generación entera ha llegado a la NBA desde allí: Steve Nash (2× MVP), Andrew Wiggins, Shai Gilgeous-Alexander, RJ Barrett o Jamal Murray. El crecimiento canadiense está ligado directamente al programa Canada Basketball y a la consolidación de los Toronto Raptors como franquicia de referencia nacional.</p>
+    <p><strong>Europa</strong> lidera en volumen total (141 jugadores), con presencia creciente desde 2013-14. <strong>África</strong> crece desde 2016 impulsada por Siakam (Camerún, Campeón 2019) y Giannis (Nigeria/Grecia, 2× MVP). <strong>Asia/Oceanía</strong> suma 53 jugadores, con Australia como principal exportador (Bogut, Patty Mills, Ben Simmons). <strong>América Latina</strong> tiene presencia constante aunque reducida en el dataset, parcialmente afectada también por datos de nacionalidad incompletos en temporadas anteriores.</p>
+    <p>"Otros Internacional" es ahora residual tras la corrección de la clasificación: agrupa solo países con representación mínima (islas del Caribe, países centroeuropeos pequeños, etc.). La mayor parte de los jugadores internacionales ya tienen región asignada correctamente en las seis categorías del gráfico.</p>
+    <p class="note">Datos de nacionalidad via NBA API PlayerIndex. Para temporadas anteriores a 2010, la mayoría de jugadores carecen de país registrado en la API, subestimando significativamente la internacionalización real de esas épocas.</p>
+  </div>
 </section>
 
 <!-- FOOTER -->
