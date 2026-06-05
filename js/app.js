@@ -269,7 +269,7 @@ function drawS0() {
   const el = document.getElementById('chart-s0');
   el.innerHTML = '';
   const W = el.clientWidth || 700;
-  const H = 340;
+  const H = 420;
   const svg = d3.select('#chart-s0').append('svg').attr('width', W).attr('height', H);
 
   // arrowhead marker
@@ -366,7 +366,7 @@ function drawS0() {
     { name: 'salary_vs_per',  desc: 'Δ percentiles' },
     { name: 'pts_per_dollar', desc: 'PTS / $M' },
   ];
-  const metY = H - 68;
+  const metY = H - 80;
   const mW = (W - 40) / metrics.length;
 
   svg.append('text').attr('x', 20).attr('y', metY - 6)
